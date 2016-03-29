@@ -36,8 +36,8 @@
 
 	function addNewContent(){
 		
-		if(isset($_POST['table']) && !empty($_POST['table'])) 
-		{
+		//if(isset($_POST['table']) && !empty($_POST['table'])) 
+		//{
 			$table = $_POST['table'];
 			$bd = new bdService();
 			$strSQL="
@@ -53,6 +53,7 @@
 			}
 
 			$newContentStructure = array();
+
 			foreach ($structure as $key => $value) {
 				if($value["Key"]=="MUL" && $value["Extra"]!="auto_increment")
 				{
@@ -83,6 +84,13 @@
 					{
 						die($e->getmessage());
 					}
+
+					foreach ($content as $key => $v) {
+						foreach ($v as $cle => $valeur) {
+							$content[$key][$cle]=utf8_encode($valeur);
+						}
+					}
+
 					$newContentStructure[$value['Field']]=$content;
 				}
 				elseif($value["Extra"]=="auto_increment")
@@ -96,6 +104,72 @@
 			}
 			
 			echo(json_encode($newContentStructure));
+		//}
+	}
+
+	function addNewContentChoix(){
+		
+		if(isset($_POST['table']) && !empty($_POST['table'])) 
+		{
+			$table = $_POST['table'];
+			$champ = $_POST['champ'];
+			$cle = $_POST['key'];
+			$bd = new bdService();
+			$strSQL="
+			DESCRIBE ".$table;
+			try
+			{
+				$structure=$bd->Selection($strSQL);
+			}
+			
+			catch(Exception $e)
+			{
+				die($e->getmessage());
+			}
+
+			foreach ($structure as $key => $value) {
+				if(strcmp($value["Field"],$champ) == 0)
+				{
+					$value=$value["Field"];
+					break;
+				}
+			}
+
+			$bd = new bdService();
+			$strSQL="
+			SELECT NAME FROM information_schema.INNODB_SYS_TABLES WHERE TABLE_ID = (SELECT TABLE_ID FROM information_schema.INNODB_SYS_COLUMNS WHERE NAME='".$value."' AND POS=0)
+			";
+			try
+			{
+				$fkTable=$bd->Selection($strSQL);
+			}
+			
+			catch(Exception $e)
+			{
+				die($e->getmessage());
+			}
+
+			$fkTable=substr($fkTable[0]["NAME"],strpos($fkTable[0]["NAME"],"/")+1);
+
+			$strSQL="
+			SELECT ".$value.",".$cle." FROM ".$fkTable;
+			try
+			{
+				$content=$bd->Selection($strSQL);
+			}
+			
+			catch(Exception $e)
+			{
+				die($e->getmessage());
+			}
+
+			foreach ($content as $key => $v) {
+				foreach ($v as $cle => $valeur) {
+					$content[$key][$cle]=utf8_encode($valeur);
+				}
+			}
+			
+			echo(json_encode($content));
 		}
 	}
 	

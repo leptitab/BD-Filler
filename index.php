@@ -8,7 +8,7 @@
 		<select id="tables">
 		</select>
 		<button id="add">add new</button>
-		<div id="newContent"></div>
+		<table id="newContent"></table>
 		<table id="contenu"></table>
 	</body>
 	<script>
@@ -36,41 +36,99 @@
 
 		$("#add").click(function(){
 			if( $('#newContent').is(':empty') ) {
-				contenu="";
 				$.ajax({
 					type: "POST",
 					data: {action: "addNewContent", table: $("#tables").val()},
 					url: "requete.php",
 					dataType: "json",
 					success: function(content){
+						contenu="<tr>";
 						$.each(content, function(key, value){
+							contenu+="<th>";
+							if(!$.isArray(value))
+							{
+								contenu+=key;
+							}
+							else{
+								//Faire la liste déroulante pour les array
+								contenu+="<select id='"+key+"' class='fk_choix'>"
+								objet=value[0];
+								$.each(objet, function(cle, valeur){
+									contenu+="<option value='"+cle+"'>"+cle+"</options>";
+								});
+								contenu+="</select>";
+							}
+							contenu+="</th>";
+						});
+
+						contenu+="</tr>";
+						$("#newContent").append(contenu);
+
+						contenu="<tr>";
+
+						$.each(content, function(key, value){
+							contenu+="<td id='fk_"+key+"'>";
 							if(!$.isArray(value))
 							{
 								contenu+="<input placeholder='"+key+"' type='";
 								if(value.match("int"))
 								{
-									contenu+="number' ";
+									contenu+="number'";
 								}
 								else if(value.match("varchar"))
 								{
-									contenu+="text' ";
+									contenu+="text'";
 								}
 								contenu+="maxlength='"+value.substring(value.indexOf('(')+1,value.indexOf(')'))+"'>"
 							}
 							else{
-								//Faire la liste déroulante pour les array
+								contenu+=foreignKeyContent(value, key );
 							}
+							contenu+="</td>";
 						});
+						contenu+="</tr>";
 						$("#newContent").append(contenu);
 					}
 				});
 			}
-		})
+		});
+
+		$("#newContent").on("change",".fk_choix",function(){
+			key=$(this).val();
+			champ=$(this).attr("id");
+			$.ajax({
+				type: "POST",
+				data: {action: "addNewContentChoix", table: $("#tables").val(), key: key, champ: champ},
+				url: "requete.php",
+				dataType: "json",
+				success: function(content){
+					contenu=foreignKeyContent(content, champ);
+
+					$("#fk_"+champ).empty();
+					$("#fk_"+champ).append(contenu);
+				}
+			});
+
+		});
+
+		function foreignKeyContent(value, key){
+			contenu="<select>";
+			$.each(value, function(k,objet){
+				contenu+="<option value='"+objet[key]+"'>";
+				$.each(objet, function(cle, valeur){
+					if($("#"+key).val().match(cle))
+					{
+						contenu+=valeur;
+					}
+				});
+			});
+			contenu+="</select>"
+
+			return contenu;
+		}
 
 		function callTableContent()
 		{
-			$("#contenu").empty();
-			$("#newContent").empty();
 			contenu="";
 			$.ajax({
 				type: "POST",
@@ -90,6 +148,9 @@
 						});
 						contenu+="</tr>";
 					});
+
+					$("#contenu").empty();
+					$("#newContent").empty();
 					$("#contenu").append(contenu);
 				}
 			});
